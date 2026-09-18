@@ -1,0 +1,760 @@
+{
+  "name": "support_flow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chamado",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -288,
+        -128
+      ],
+      "id": "58a73a67-1b4d-4197-b552-1c7ac0bfb2e1",
+      "name": "Webhook",
+      "webhookId": "798671c1-5c4c-4083-b106-150eee6d8448",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "GyvQlmXcins5FJAJ",
+          "name": "tech"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nreturn [{\n  json: {\n    chamado_id: $execution.id,\n    ticket_id: body.ticket_id || \"não informado\",\n    sistema: body.sistema || \"SAP\",\n    modulo: body.modulo || \"não informado\",\n    chamado_texto: body.chamado,\n    usuario: body.usuario || \"não informado\",\n    prioridade: body.prioridade || \"normal\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -128
+      ],
+      "id": "b6dd6cf5-9b8a-4d9e-bc28-d8f41d34f5f3",
+      "name": "ticket_processing"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sistema: {{ $('ticket_processing').item.json.sistema }}\nMódulo: {{ $('ticket_processing').item.json.modulo }}\nTicket ID: {{ $('ticket_processing').item.json.ticket_id }}\nPrioridade: {{ $('ticket_processing').item.json.prioridade }}\n\nChamado:\n{{ $('ticket_processing').item.json.chamado_texto }}",
+        "options": {
+          "systemMessage": "=Você é um assistente especializado em suporte SAP MM (Materials Management).\n\nSeu papel é analisar chamados de suporte SAP e fornecer orientações baseadas EXCLUSIVAMENTE na base de conhecimento fornecida via RAG.\n\n# REGRAS OBRIGATÓRIAS: (guardrails)\n1. Responda APENAS com base nas informações encontradas na base de conhecimento\n2. Se não encontrar informação suficiente, diga claramente que não tem informação suficiente e solicite mais detalhes\n3. NUNCA invente transações, movimentos ou procedimentos que não estejam na base de conhecimento\n4. Se o chamado envolver ações de ALTO RISCO, sinalize como REQUER_APROVACAO_HUMANA\n4.1 Exemplos:\nDESBLOQUEIO DE FORNECEDOR\nQualquer solicitação para desbloquear um fornecedor para compras ou pagamento.\nMotivo: o desbloqueio indevido pode resultar em pagamentos a fornecedores fraudulentos\nou com pendências legais. Requer aprovação formal do gestor de compras.\n\nESTORNO DE FATURA COM PAGAMENTO JÁ PROCESSADO\nQualquer solicitação de estorno de nota fiscal que já teve pagamento processado no FI.\nMotivo: o estorno pode gerar inconsistências financeiras e contábeis irreversíveis.\nRequer aprovação do gestor financeiro e envolvimento do time de contas a pagar.\n\nALTERAÇÃO DE PERFIL DE AUTORIZAÇÃO DE USUÁRIO\nQualquer solicitação para conceder, ampliar ou remover acessos de usuários no SAP.\nMotivo: alterações indevidas de autorização comprometem a segurança e a segregação\nde funções do sistema. Requer aprovação formal do gestor e execução exclusiva pelo time.\n\n5. Sempre informe as fontes consultadas e o nível de confiança da resposta\n\n# AÇÕES QUE REQUEREM OBRIGATORIAMENTE APROVAÇÃO HUMANA:\n- Desbloqueio de fornecedor\n- Alteração de dados bancários de fornecedor\n- Estorno de fatura com pagamento já processado\n- Alteração de perfil de autorização de usuário\n- Qualquer ação com impacto financeiro acima de R$10.000\n\n# QUANDO SOLICITAR MAIS INFORMAÇÕES:\nSe o chamado não tiver dados suficientes para diagnóstico correto, defina:\n- \"solicitar_mais_informacoes\": true\n- \"informacoes_faltantes\": liste claramente o que precisa saber\n- \"nivel_confianca\": \"BAIXO\"\n\nExemplos de chamados incompletos:\n- \"Meu SAP não está funcionando\" — sem módulo, transação ou erro\n- \"Não consigo criar o documento\" — sem especificar qual documento\n- \"Está dando erro\" — sem informar a mensagem de erro\n\n# FORMATO DA RESPOSTA:\nRetorne SEMPRE um JSON válido com esta estrutura:\n{\n  \"modulo\": \"...\",\n  \"processo\": \"...\",\n  \"interpretacao\": \"...\",\n  \"informacoes_faltantes\": \"lista do que falta ou null\",\n  \"solicitar_mais_informacoes\": true ou false,\n  \"causas_possiveis\": \"...\",\n  \"proximos_passos\": \"...\",\n  \"transacoes_envolvidas\": \"...\",\n  \"fontes_consultadas\": \"...\",\n  \"nivel_confianca\": \"ALTO, MEDIO ou BAIXO\",\n  \"requer_aprovacao_humana\": true ou false,\n  \"motivo_aprovacao_humana\": \"motivo ou null\"\n}\n\n# TRATAMENTO FORA DE ESCOPO\nSE o chamado não for relacionado ao SAP MM ou a módulos SAP, responda:\n{\n  \"modulo\": \"Fora do escopo\",\n  \"processo\": \"Não aplicável\",\n  \"interpretacao\": \"Este chamado não está relacionado ao SAP MM\",\n  \"causas_possiveis\": null,\n  \"proximos_passos\": \"Por favor, direcione seu chamado para o suporte correto\",\n  \"transacoes_envolvidas\": null,\n  \"fontes_consultadas\": \"Nenhuma — chamado fora do escopo\",\n  \"nivel_confianca\": \"ALTO\",\n  \"requer_aprovacao_humana\": false,\n  \"motivo_aprovacao_humana\": null\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        272,
+        -128
+      ],
+      "id": "1dff4e4a-9922-42c8-877c-85d1a4445a89",
+      "name": "ticket_ai_agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        272,
+        48
+      ],
+      "id": "a0b8997b-d941-446d-a91e-8ad8e6314e24",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "2Ul32aAjFUujRfy1",
+          "name": "open_ai_f"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use essa tool para coletar informações do SAP para dar recomendações de soluções dos chamados",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "sap-database",
+          "mode": "list",
+          "cachedResultName": "sap-database"
+        },
+        "options": {
+          "pineconeNamespace": "sap-support"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        112
+      ],
+      "id": "c9948929-c7f9-4166-9c05-5ecbc8b27f95",
+      "name": "RAG-SAP",
+      "credentials": {
+        "pineconeApi": {
+          "id": "dlyuF8DsEcrwKdzP",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        272
+      ],
+      "id": "832ef81e-228a-4b37-8765-b67fca4b1c5a",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "2Ul32aAjFUujRfy1",
+          "name": "open_ai_f"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentResponse = $input.first().json.output;\n\nlet parsed;\ntry {\n  const clean = agentResponse.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  parsed = JSON.parse(clean);\n} catch(e) {\n  parsed = {\n    modulo: \"Não identificado\",\n    processo: \"Não identificado\",\n    interpretacao: agentResponse,\n    informacoes_faltantes: null,\n    solicitar_mais_informacoes: false,\n    causas_possiveis: \"Não foi possível processar a resposta\",\n    proximos_passos: \"Contate o suporte técnico\",\n    transacoes_envolvidas: null,\n    fontes_consultadas: \"Base de conhecimento SAP MM\",\n    nivel_confianca: \"BAIXO\",\n    requer_aprovacao_humana: true,\n    motivo_aprovacao_humana: \"Erro no processamento da resposta\"\n  };\n}\n\nreturn [{\n  json: {\n    ticket_id: $('ticket_processing').item.json.ticket_id,\n    sistema: $('ticket_processing').item.json.sistema,\n    chamado_texto: $('ticket_processing').item.json.chamado_texto,\n    usuario: $('ticket_processing').item.json.usuario,\n    prioridade: $('ticket_processing').item.json.prioridade,\n    ...parsed\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -128
+      ],
+      "id": "695c1e15-a1cc-4fe9-820a-45335a5909f6",
+      "name": "processes_response"
+    },
+    {
+      "parameters": {
+        "path": "aprovar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        368,
+        640
+      ],
+      "id": "e97ad32f-f7a1-4785-8b77-0a746112e91f",
+      "name": "aprove",
+      "webhookId": "c6f24110-3a0c-43a2-b63c-09dd8cd91e06"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "chamados",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.query.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.query.acao }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        640,
+        640
+      ],
+      "id": "2b422b8e-1bc4-46fe-98bf-41c6dd7d38a2",
+      "name": "ticket_update",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ZZmR3r3KsQVXMCso",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "chamados",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "chamado_texto",
+              "fieldValue": "={{ $json.chamado_texto }}"
+            },
+            {
+              "fieldId": "modulo_identificado",
+              "fieldValue": "={{ $json.modulo }}"
+            },
+            {
+              "fieldId": "processo_identificado",
+              "fieldValue": "={{ $json.processo }}"
+            },
+            {
+              "fieldId": "causas_possiveis",
+              "fieldValue": "={{ $json.causas_possiveis }}"
+            },
+            {
+              "fieldId": "proximos_passos",
+              "fieldValue": "={{ $json.proximos_passos }}"
+            },
+            {
+              "fieldId": "fontes_consultadas",
+              "fieldValue": "={{ $json.fontes_consultadas }}"
+            },
+            {
+              "fieldId": "nivel_confianca",
+              "fieldValue": "={{ $json.nivel_confianca }}"
+            },
+            {
+              "fieldId": "requer_humano",
+              "fieldValue": "={{ $json.requer_aprovacao_humana }}"
+            },
+            {
+              "fieldId": "resposta_final",
+              "fieldValue": "={{ JSON.stringify($json) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.requer_aprovacao_humana ? 'aguardando_aprovacao' : 'respondido' }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        -128
+      ],
+      "id": "b069e507-dd43-4a81-bb63-c768acb2e137",
+      "name": "save_ticket",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ZZmR3r3KsQVXMCso",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<html>\n<body style=\"font-family:sans-serif;text-align:center;padding:40px\">\n  <h2>{{ $json.query.acao === 'aprovado' ? '✅ Chamado Aprovado' : '❌ Chamado Rejeitado' }}</h2>\n  <p>O status foi atualizado com sucesso no sistema.</p>\n</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        848,
+        640
+      ],
+      "id": "44e47404-ce6e-47ea-9b79-ee090acf5254",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "fromEmail": "SEU_EMAIL@dominio.com",
+        "toEmail": "EMAIL_DESTINATARIO@dominio.com",
+        "subject": "=[SAP SUPORTE] Chamado requer aprovação humana — {{ $('processes_response').item.json.modulo }}",
+        "html": "=<h2>Chamado requer validação humana</h2>\n<p><strong>Ticket ID:</strong> {{ $('processes_response').item.json.ticket_id }}</p>\n<p><strong>Módulo:</strong> {{ $('processes_response').item.json.modulo }}</p>\n<p><strong>Prioridade:</strong> {{ $('processes_response').item.json.prioridade }}</p>\n<p><strong>Chamado:</strong> {{ $('processes_response').item.json.chamado_texto }}</p>\n<p><strong>Análise:</strong> {{ $('processes_response').item.json.causas_possiveis }}</p>\n<p><strong>Próximos passos:</strong> {{ $('processes_response').item.json.proximos_passos }}</p>\n<p><strong>Motivo:</strong> {{ $('processes_response').item.json.motivo_aprovacao_humana }}</p>\n\n<br/>\n<a href=\"https://n8n.nexmindai.com.br/webhook/aprovar?id={{ $('save_ticket').item.json.id }}&acao=aprovado\" \n   style=\"background:#22c55e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;margin-right:10px\">\n  ✅ APROVAR\n</a>\n\n<a href=\"https://n8n.nexmindai.com.br/webhook/aprovar?id={{ $('save_ticket').item.json.id }}&acao=rejeitado\" \n   style=\"background:#ef4444;color:white;padding:12px 24px;text-decoration:none;border-radius:6px\">\n  ❌ REJEITAR\n</a>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1728,
+        -336
+      ],
+      "id": "f58c6540-3981-424f-935e-64752f668a18",
+      "name": "approve_mail",
+      "webhookId": "9778acf4-f901-48a5-af51-0b2b4d8787fe",
+      "credentials": {
+        "smtp": {
+          "id": "QfgP8SSqebWwWEBG",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "SEU_EMAIL@dominio.com",
+        "toEmail": "EMAIL_DESTINATARIO@dominio.com",
+        "subject": "=[SAP Suporte] Chamado respondido — {{ $('processes_response').item.json.modulo }}",
+        "emailFormat": "text",
+        "text": "=Olá!\n\nSeu chamado SAP foi analisado pelo nosso assistente de suporte.\n\nMÓDULO: {{ $('processes_response').item.json.modulo }}\nPROCESSO: {{ $('processes_response').item.json.processo }}\nNÍVEL DE CONFIANÇA: {{ $('processes_response').item.json.nivel_confianca }}\n\nINTERPRETAÇÃO DO CHAMADO:\n{{ $('processes_response').item.json.interpretacao }}\n\nPOSSÍVEIS CAUSAS:\n{{ $json.causas_possiveis }}\n\nPRÓXIMOS PASSOS:\n{{ $json.proximos_passos }}\n\nTRANSAÇÕES ENVOLVIDAS:{{ $('processes_response').item.json.transacoes_envolvidas }}\n\n\nFONTES CONSULTADAS:\n{{ $('processes_response').item.json.fontes_consultadas }}\n\n---\nID do chamado: {{ $('Webhook').item.json.body.ticket_id }}\n⚠️ Esta é uma recomendação gerada por IA. Valide as orientações antes de executar ações no SAP.\nAssistente de Suporte SAP",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1616,
+        112
+      ],
+      "id": "7c4f2c40-d8b2-46b0-bc71-b8c58e1a7c52",
+      "name": "mail_ticket response",
+      "webhookId": "5400eb25-3a4a-4ad0-a6e9-ea101ea118c8",
+      "credentials": {
+        "smtp": {
+          "id": "QfgP8SSqebWwWEBG",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "SEU_EMAIL@dominio.com",
+        "toEmail": "EMAIL_DESTINATARIO@dominio.com",
+        "subject": "=[SAP Suporte] Chamado em análise — {{ $('processes_response').item.json.modulo }}",
+        "emailFormat": "text",
+        "text": "=Olá!\n\nRecebemos seu chamado sobre módulo {{ $('processes_response').item.json.modulo }}.\n\nApós análise inicial, identificamos que este caso requer validação da nossa equipe de especialistas antes de prosseguir.\n\nMOTIVO: {{ $('processes_response').item.json.motivo_aprovacao_humana }}\n\nNossa equipe foi notificada e entrará em contato em breve com a orientação correta.\n\n---\nID do chamado: {{ $('save_ticket').item.json.id }}\nAssistente de Suporte SAP",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1504,
+        -336
+      ],
+      "id": "00100df0-d3a0-423e-aa9b-c2b86b12230b",
+      "name": "user_response",
+      "webhookId": "a9cd63db-47f2-4287-9ea3-487400d9fb4d",
+      "credentials": {
+        "smtp": {
+          "id": "QfgP8SSqebWwWEBG",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('processes_response').item.json.requer_aprovacao_humana }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "9478f48b-1924-4bce-8f64-2364496fdb55"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Requires approval"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "dbcfe3f9-a463-41ff-bc02-d7ee5d66e0c9",
+                    "leftValue": "={{ $('processes_response').item.json.solicitar_mais_informacoes }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Requires info"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        1248,
+        -144
+      ],
+      "id": "e09399a8-bf68-4c61-bb44-46106e76ef14",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.plataforma-tickets.com/v1/chamados/atualizar",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ticket_id\": \"{{ $('processes_response').item.json.ticket_id }}\",\n  \"sistema\": \"{{ $('processes_response').item.json.sistema }}\",\n  \"status\": \"aguardando_informacoes\",\n  \"modulo\": \"{{ $('processes_response').item.json.modulo }}\",\n  \"processo\": \"{{ $('processes_response').item.json.processo }}\",\n  \"mensagem_usuario\": \"{{ 'Olá! Analisamos seu chamado e precisamos de algumas informações adicionais para prosseguir:\\n\\n- ' + $('processes_response').item.json.informacoes_faltantes.join('\\n- ') }}\",\n  \"causas_possiveis\": \"{{ $('processes_response').item.json.causas_possiveis }}\",\n  \"fontes_consultadas\": \"{{ $('processes_response').item.json.fontes_consultadas }}\",\n  \"nivel_confianca\": \"{{ $('processes_response').item.json.nivel_confianca }}\",\n  \"tipo_resposta\": \"solicitacao_informacoes\",\n  \"origem\": \"assistente_ia_sap\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1632,
+        -128
+      ],
+      "id": "3d045309-bd0b-46b9-985b-2f989ec854b4",
+      "name": "fake-api",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.plataforma-tickets.com/v1/chamados/atualizar",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ticket_id\": \"{{ $('processes_response').item.json.ticket_id }}\",\n  \"chamado_id\": \"{{ $('save_ticket').item.json.id }}\",\n  \"status\": \"{{ $('processes_response').item.json.requer_aprovacao_humana ? 'aguardando_aprovacao' : $('processes_response').item.json.solicitar_mais_informacoes ? 'informacoes_pendentes' : 'respondido' }}\",\n  \"resposta\": \"{{ $('processes_response').item.json.proximos_passos }}\",\n  \"origem\": \"assistente_ia_sap\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1952,
+        -336
+      ],
+      "id": "f56ae9e0-96eb-4950-8708-f478cbd372df",
+      "name": "fake-api1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ticket_id\": \"{{ $('processes_response').item.json.ticket_id }}\",\n  \"chamado_id\": \"{{ $('save_ticket').item.json.id }}\",\n  \"status\": \"{{ $('processes_response').item.json.requer_aprovacao_humana ? 'aguardando_aprovacao' : $('processes_response').item.json.solicitar_mais_informacoes ? 'informacoes_pendentes' : 'respondido' }}\",\n  \"resposta\": \"{{ $('processes_response').item.json.proximos_passos }}\",\n  \"origem\": \"assistente_ia_sap\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2160,
+        -336
+      ],
+      "id": "ab60958c-452a-478a-95a6-78e5e1447b7f",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={\n  \"ticket_id\": \"{{ $('processes_response').item.json.ticket_id }}\",\n  \"sistema\": \"{{ $('processes_response').item.json.sistema }}\",\n  \"status\": \"aguardando_informacoes\",\n  \"modulo\": \"{{ $('processes_response').item.json.modulo }}\",\n  \"processo\": \"{{ $('processes_response').item.json.processo }}\",\n  \"mensagem_usuario\": \"{{ 'Olá! Analisamos seu chamado e precisamos de algumas informações adicionais para prosseguir:\\n\\n- ' + $('processes_response').item.json.informacoes_faltantes.join('\\n- ') }}\",\n  \"causas_possiveis\": \"{{ $('processes_response').item.json.causas_possiveis }}\",\n  \"fontes_consultadas\": \"{{ $('processes_response').item.json.fontes_consultadas }}\",\n  \"nivel_confianca\": \"{{ $('processes_response').item.json.nivel_confianca }}\",\n  \"tipo_resposta\": \"solicitacao_informacoes\",\n  \"origem\": \"assistente_ia_sap\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1984,
+        -128
+      ],
+      "id": "86a8fc35-ea58-49ad-934e-23567ff4abe4",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ticket_id\": \"{{ $('processes_response').item.json.ticket_id }}\",\n  \"chamado_id\": \"{{ $('save_ticket').item.json.id }}\",\n  \"status\": \"respondido\",\n  \"modulo\": \"{{ $('processes_response').item.json.modulo }}\",\n  \"processo\": \"{{ $('processes_response').item.json.processo }}\",\n  \"interpretacao\": \"{{ $('processes_response').item.json.interpretacao }}\",\n  \"causas_possiveis\": \"{{ $('processes_response').item.json.causas_possiveis }}\",\n  \"proximos_passos\": \"{{ $('processes_response').item.json.proximos_passos }}\",\n  \"transacoes_envolvidas\": \"{{ $('processes_response').item.json.transacoes_envolvidas }}\",\n  \"fontes_consultadas\": \"{{ $('processes_response').item.json.fontes_consultadas }}\",\n  \"nivel_confianca\": \"{{ $('processes_response').item.json.nivel_confianca }}\",\n  \"tipo_resposta\": \"recomendacao_ia\",\n  \"origem\": \"assistente_ia_sap\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2112,
+        112
+      ],
+      "id": "3ccd4c86-f858-43e3-82bf-50255812c439",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.plataforma-tickets.com/v1/chamados/atualizar",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ticket_id\": \"{{ $('processes_response').item.json.ticket_id }}\",\n  \"chamado_id\": \"{{ $('save_ticket').item.json.id }}\",\n  \"status\": \"respondido\",\n  \"modulo\": \"{{ $('processes_response').item.json.modulo }}\",\n  \"processo\": \"{{ $('processes_response').item.json.processo }}\",\n  \"interpretacao\": \"{{ $('processes_response').item.json.interpretacao }}\",\n  \"causas_possiveis\": \"{{ $('processes_response').item.json.causas_possiveis }}\",\n  \"proximos_passos\": \"{{ $('processes_response').item.json.proximos_passos }}\",\n  \"transacoes_envolvidas\": \"{{ $('processes_response').item.json.transacoes_envolvidas }}\",\n  \"fontes_consultadas\": \"{{ $('processes_response').item.json.fontes_consultadas }}\",\n  \"nivel_confianca\": \"{{ $('processes_response').item.json.nivel_confianca }}\",\n  \"tipo_resposta\": \"recomendacao_ia\",\n  \"origem\": \"assistente_ia_sap\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1824,
+        112
+      ],
+      "id": "4024adf1-6ae5-49ec-bb3c-d7455b93ef62",
+      "name": "fake-api2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "APROVE \n",
+        "height": 272,
+        "width": 736
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        320,
+        544
+      ],
+      "id": "c2b87951-b280-436e-aa54-3d76194abdc6",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "ticket_processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ticket_processing": {
+      "main": [
+        [
+          {
+            "node": "ticket_ai_agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ticket_ai_agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG-SAP": {
+      "ai_tool": [
+        [
+          {
+            "node": "ticket_ai_agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "RAG-SAP",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ticket_ai_agent": {
+      "main": [
+        [
+          {
+            "node": "processes_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "processes_response": {
+      "main": [
+        [
+          {
+            "node": "save_ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aprove": {
+      "main": [
+        [
+          {
+            "node": "ticket_update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "save_ticket": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ticket_update": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "user_response": {
+      "main": [
+        [
+          {
+            "node": "approve_mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "user_response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "fake-api",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "mail_ticket response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "approve_mail": {
+      "main": [
+        [
+          {
+            "node": "fake-api1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fake-api1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fake-api": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mail_ticket response": {
+      "main": [
+        [
+          {
+            "node": "fake-api2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fake-api2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "521a7f0e-8609-4560-bf34-9e6f435f6855",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8fbe1b3a015c996d5e923a352d9e8dd6121d9ff062775fbe5575e7f868c7f0f6"
+  },
+  "id": "L0FrzniwDSWb28V1",
+  "tags": []
+}
