@@ -87,12 +87,11 @@ Em produção, as respostas seriam injetadas diretamente na plataforma de ticket
 - workflows/
   - sap_support_main.json      # Workflow principal n8n
   - sap_approval_webhook.json  # Workflow de aprovação humana
-- knowledge_base/
-  - Manual_SAP_MM.pdf          # Base de conhecimento indexada no Pinecone
 - postman/
   - SAP_Support_Collection.json # Collection com os 5 chamados de teste
-- docs/
-  - architecture_diagram.png   # Diagrama da arquitetura
+- architecture_diagram.png   # Diagrama da arquitetura
+- Manual_SAP_MM.pdf          # Base de conhecimento indexada no Pinecone
+- Evidencias de testes # Inputs e outputs gerados
 - README.md
 ```
 
